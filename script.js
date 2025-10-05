@@ -44,7 +44,7 @@ class Running extends Workout {
   //метод расчета темпа
   calcPace() {
     //мин / км
-    this.pace = this.duration / thiss.distance;
+    this.pace = this.duration / this.distance;
     return this.pace;
   }
 }
@@ -70,6 +70,7 @@ class Cycling extends Workout {
 class App {
   #map;
   #mapEvent;
+  #workouts = []; //инициализация
 
   constructor() {
     this._getPosition(); //будет выполняться, когда код загрузится
@@ -123,16 +124,57 @@ class App {
   }
 
   _newWorkout(e) {
+    //функция для проверки входных данных
+    const validInputs = (...inputs) =>
+      inputs.every(inp => Number.isFinite(inp));
+
+    const allPositive = (...inputs) => inputs.every(inp => inp > 0);
+
     e.preventDefault();
 
-    //очистка поля ввода
-    inputDistance.value =
-      inputDuration.value =
-      inputCadence.value =
-      inputElevation.value =
-        '';
+    //реализация функции создания новой тренеровки
+    const type = inputType.value;
+    const distance = +inputDistance.value;
+    const duration = +inputDuration.value;
+    const { lat, lng } = this.#mapEvent.latlng; //массив ширины и долготы
+    let workout;
 
-    const { lat, lng } = this.#mapEvent.latlng;
+    //получение данных из формы
+    //если воркаут - бег, то создать беговой объект
+    if (type === 'running') {
+      const cadence = +inputCadence.value;
+      //проверка данных в полях ввода
+      if (
+        // !Number.isFinite(distance) ||
+        // !Number.isFinite(duration) ||
+        // !Number.isFinite(cadence)
+        !validInputs(distance, duration, cadence) ||
+        !allPositive(distance, duration, cadence)
+      )
+        return alert('Входные данные должны быть положительными числами ');
+
+      workout = new Running([lat, lng], distance, duration, cadence);
+    }
+    //если вокраут - велосипед, то создать велосипедный объект
+    if (type === 'cycling') {
+      const elevation = +inputElevation.value;
+      //проверка данных в полях ввода
+      if (
+        !validInputs(distance, duration, elevation) ||
+        !allPositive(distance, duration)
+      )
+        return alert('Входные данные должны быть положительными числами ');
+
+      workout = new Cycling([lat, lng], distance, duration, elevation);
+    }
+    //добавить новый объект в массив воркаут
+    this.#workouts.push(workout);
+  }
+
+  //добавление маркера визуализации тренеровки
+
+  renderWorkoutMarker() {
+    //отобразить тренеровку в виде маркера
     L.marker([lat, lng])
       .addTo(this.#map)
       .bindPopup(
@@ -141,16 +183,22 @@ class App {
           minWIdth: 100,
           autoClose: false,
           closeOnClick: false,
-          className: 'running-popup',
+          className: `#{type}-popup`,
         })
       )
       .setPopupContent('Тренировка')
       .openPopup();
   }
 }
+//отобразить новую тренировку в списке
+//
+//скрыть форму и очистить поля ввода
+inputDistance.value =
+  inputDuration.value =
+  inputCadence.value =
+  inputElevation.value =
+    '';
 
 const app = new App();
 //использование API геолокации (предоставляет браузер)
 //проверка навигации
-
-//прослушиватель событый на отпавку формы
